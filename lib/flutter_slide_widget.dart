@@ -11,6 +11,8 @@ class SliderDrawerOption {
   final double radiusAmount;
   final double upDownScaleAmount;
   final SliderDrawerDirection direction;
+  final double limitPercent; // New field to define the limit percentage
+
   SliderDrawerOption({
     this.backgroundColor = Colors.blue,
     this.sliderEffectType = SliderEffectType.Rectangle,
@@ -18,6 +20,7 @@ class SliderDrawerOption {
     this.radiusAmount = 0,
     this.upDownScaleAmount = 0,
     this.direction = SliderDrawerDirection.LTR,
+    this.limitPercent = 0.90, // Default value for limitPercent
   });
 }
 
@@ -40,7 +43,7 @@ class SliderDrawerWidgetState extends State<SliderDrawerWidget>
     with TickerProviderStateMixin {
   late AnimationController animationController;
   late Size size;
-  double limitPercent = 0.85;
+  late double limitPercent;
   double upDownScaleAmount = 0;
   double radiusAmount = 0;
   double drawerRate = 0.0;
@@ -78,6 +81,7 @@ class SliderDrawerWidgetState extends State<SliderDrawerWidget>
 
   void _initOption() {
     option = widget.option ?? SliderDrawerOption();
+    limitPercent = option.limitPercent;
     _direction = option.direction;
     switch (option.sliderEffectType) {
       case SliderEffectType.Rounded:
@@ -123,8 +127,9 @@ class SliderDrawerWidgetState extends State<SliderDrawerWidget>
     if (rate > limitPercent) {
       rate = limitPercent;
     }
-    drawerRate = rate;
-    update();
+    setState(() {
+      drawerRate = rate;
+    });
   }
 
   void toggleDrawer() {
@@ -144,10 +149,6 @@ class SliderDrawerWidgetState extends State<SliderDrawerWidget>
   void openDrawer() {
     animationController.forward(from: drawerRate);
     isOpened = true;
-  }
-
-  void update() {
-    setState(() {});
   }
 
   _onDragStart(DragStartDetails details) {
@@ -177,19 +178,10 @@ class SliderDrawerWidgetState extends State<SliderDrawerWidget>
 
   _onDragEnd(DragEndDetails details) {
     if (!dragPossible) return;
-    if (details.velocity.pixelsPerSecond.dx == 0) {
-      if (drawerRate >= 0.5) {
-        openDrawer();
-      } else {
-        closeDrawer();
-      }
+    if (drawerRate >= 0.5) {
+      openDrawer();
     } else {
-      if (details.velocity.pixelsPerSecond.dx > 100) {
-        openDrawer();
-      }
-      if (details.velocity.pixelsPerSecond.dx < -100) {
-        closeDrawer();
-      }
+      closeDrawer();
     }
     dragPossible = false;
   }
@@ -257,7 +249,25 @@ class SliderDrawerWidgetState extends State<SliderDrawerWidget>
                   onHorizontalDragStart: _onDragStart,
                   onHorizontalDragUpdate: _onDragUpdate,
                   onHorizontalDragEnd: _onDragEnd,
-                  child: widget.body,
+                  child: Stack(
+                    children: [
+                      widget.body,
+                      Positioned.fill(
+                          child: IgnorePointer(
+                              ignoring: !isOpened,
+                              child: GestureDetector(
+                                onTap: () {
+                                  if (isOpened) {
+                                    closeDrawer();
+                                  }
+                                },
+                                child: Container(
+                                  color: Colors.black
+                                      .withOpacity(0.7 * drawerRate),
+                                ),
+                              ))),
+                    ],
+                  ),
                 ),
               ),
             ),
